@@ -28,7 +28,15 @@ class Zi2ZiModel:
         self.schedule = schedule
 
         self.save_dir = save_dir
-        self.gpu_ids = gpu_ids
+
+        # GPU 설정 수정
+        if gpu_ids:
+            self.gpu_ids = gpu_ids if isinstance(gpu_ids, list) else [gpu_ids]
+            self.gpu_ids = [torch.device(gpu_id) for gpu_id in self.gpu_ids]
+            self.device = self.gpu_ids[0]  # 메인 GPU 설정
+        else:
+            self.gpu_ids = []
+            self.device = torch.device('cpu')
 
         self.input_nc = input_nc
         self.embedding_dim = embedding_dim
@@ -40,7 +48,6 @@ class Zi2ZiModel:
         self.image_size = image_size
 
     def setup(self):
-
         self.netG = UNetGenerator(
             input_nc=self.input_nc,
             output_nc=self.input_nc,
@@ -56,8 +63,13 @@ class Zi2ZiModel:
             image_size=self.image_size
         )
 
-        init_net(self.netG, gpu_ids=self.gpu_ids)
-        init_net(self.netD, gpu_ids=self.gpu_ids)
+        # GPU 설정
+        if len(self.gpu_ids) > 0:
+            self.netG.to(self.device)
+            self.netD.to(self.device)
+            if len(self.gpu_ids) > 1:
+                self.netG = nn.DataParallel(self.netG, device_ids=range(len(self.gpu_ids)))
+                self.netD = nn.DataParallel(self.netD, device_ids=range(len(self.gpu_ids)))
 
         self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=self.lr, betas=(0.5, 0.999))
         self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=self.lr, betas=(0.5, 0.999))
@@ -69,13 +81,14 @@ class Zi2ZiModel:
         self.mse = nn.MSELoss()
         self.sigmoid = nn.Sigmoid()
 
-        if self.gpu_ids:
-            self.category_loss.cuda()
-            self.real_binary_loss.cuda()
-            self.fake_binary_loss.cuda()
-            self.l1_loss.cuda()
-            self.mse.cuda()
-            self.sigmoid.cuda()
+        # loss functions를 GPU로 이동
+        if len(self.gpu_ids) > 0:
+            self.category_loss.to(self.device)
+            self.real_binary_loss.to(self.device)
+            self.fake_binary_loss.to(self.device)
+            self.l1_loss.to(self.device)
+            self.mse.to(self.device)
+            self.sigmoid.to(self.device)
 
         if self.is_training:
             self.netD.train()
@@ -84,11 +97,13 @@ class Zi2ZiModel:
             self.netD.eval()
             self.netG.eval()
 
+
     def set_input(self, labels, real_A, real_B):
+        # GPU 설정 수정
         if self.gpu_ids:
-            self.real_A = real_A.to(self.gpu_ids[0])
-            self.real_B = real_B.to(self.gpu_ids[0])
-            self.labels = labels.to(self.gpu_ids[0])
+            self.real_A = real_A.to(self.device)
+            self.real_B = real_B.to(self.device)
+            self.labels = labels.to(self.device)
         else:
             self.real_A = real_A
             self.real_B = real_B
@@ -208,41 +223,30 @@ class Zi2ZiModel:
         print('-----------------------------------------------')
 
     def save_networks(self, epoch):
-        """Save all the networks to the disk.
-        Parameters:
-            epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
-        """
         for name in ['G', 'D']:
             if isinstance(name, str):
                 save_filename = '%s_net_%s.pth' % (epoch, name)
                 save_path = os.path.join(self.save_dir, save_filename)
                 net = getattr(self, 'net' + name)
 
-                if self.gpu_ids and torch.cuda.is_available():
-                    # torch.save(net.cpu().state_dict(), save_path)
-                    torch.save(net.state_dict(), save_path)
-                    net.cuda(self.gpu_ids[0])
+                if len(self.gpu_ids) > 0:
+                    torch.save(net.module.state_dict(), save_path)
                 else:
-                    torch.save(net.cpu().state_dict(), save_path)
+                    torch.save(net.state_dict(), save_path)
 
     def load_networks(self, epoch):
-        """Load all the networks from the disk.
-        Parameters:
-            epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
-        """
         for name in ['G', 'D']:
             if isinstance(name, str):
                 load_filename = '%s_net_%s.pth' % (epoch, name)
                 load_path = os.path.join(self.save_dir, load_filename)
                 net = getattr(self, 'net' + name)
 
-                if self.gpu_ids and torch.cuda.is_available():
-                    net.load_state_dict(torch.load(load_path))
+                state_dict = torch.load(load_path, map_location=self.device)
+                if len(self.gpu_ids) > 0:
+                    net.module.load_state_dict(state_dict)
                 else:
-                    net.load_state_dict(torch.load(load_path,map_location=torch.device('cpu')))
-                # net.eval()
+                    net.load_state_dict(state_dict)
         print('load model %d' % epoch)
-
     def sample(self, batch, basename):
         chk_mkdir(basename)
         cnt = 0

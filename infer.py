@@ -53,13 +53,11 @@ parser.add_argument('--label', type=int, default=0)
 parser.add_argument('--src_font', type=str, default='charset/gbk/方正新楷体_GBK(完整).TTF')
 parser.add_argument('--type_file', type=str, default='type/宋黑类字符集.txt')
 
-
 def draw_single_char(ch, font, canvas_size):
     img = Image.new("RGB", (canvas_size, canvas_size), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((0, 0), ch, (0, 0, 0), font=font)
-    img = img.convert('L')
-    return img
+    return img  # RGB 모드 유지
 
 
 def main():

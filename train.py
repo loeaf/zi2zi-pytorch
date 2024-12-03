@@ -51,21 +51,42 @@ def chkormakedir(path):
 
 def main():
     args = parser.parse_args()
+    data_dir = os.path.join(args.experiment_dir, "data")
+    checkpoint_dir = os.path.join(args.experiment_dir, "checkpoint")
+    sample_dir = os.path.join(args.experiment_dir, "sample")  # sample_dir 추가
+
+    # 필요한 디렉토리 생성
+    chkormakedir(data_dir)
+    chkormakedir(checkpoint_dir)
+    chkormakedir(sample_dir)  # sample 디렉토리 생성
+
     random.seed(args.random_seed)
     torch.manual_seed(args.random_seed)
 
-    data_dir = os.path.join(args.experiment_dir, "data")
-    checkpoint_dir = os.path.join(args.experiment_dir, "checkpoint")
-    chkormakedir(checkpoint_dir)
-    sample_dir = os.path.join(args.experiment_dir, "sample")
-    chkormakedir(sample_dir)
 
-    start_time = time.time()
+    # GPU 설정
+    if torch.cuda.is_available() and args.gpu_ids:
+        gpu_ids = [int(id) for id in args.gpu_ids]
+        torch.cuda.set_device(gpu_ids[0])
+        print(f"Using GPUs: {gpu_ids}")
+    else:
+        gpu_ids = []
+        print("Using CPU")
 
-    # train_dataset = DatasetFromObj(os.path.join(data_dir, 'train.obj'),
-    #                                augment=True, bold=True, rotate=True, blur=True)
-    # val_dataset = DatasetFromObj(os.path.join(data_dir, 'val.obj'))
-    # dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+    if len(gpu_ids) > 0:
+        torch.cuda.manual_seed(args.random_seed)
+
+    # 초기 데이터셋 설정
+    train_dataset = DatasetFromObj(
+        os.path.join(data_dir, 'train.obj'),
+        input_nc=args.input_nc,
+        augment=True,
+        bold=False,
+        rotate=False,
+        blur=True
+    )
 
     model = Zi2ZiModel(
         input_nc=args.input_nc,
@@ -74,7 +95,7 @@ def main():
         Lconst_penalty=args.Lconst_penalty,
         Lcategory_penalty=args.Lcategory_penalty,
         save_dir=checkpoint_dir,
-        gpu_ids=args.gpu_ids
+        gpu_ids=gpu_ids  # 수정된 gpu_ids 전달
     )
     model.setup()
     model.print_networks(True)
@@ -84,6 +105,8 @@ def main():
     # val dataset load only once, no shuffle
     val_dataset = DatasetFromObj(os.path.join(data_dir, 'val.obj'), input_nc=args.input_nc)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+
+    start_time = time.time()  # 시작 시간 기록
 
     global_steps = 0
 
