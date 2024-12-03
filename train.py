@@ -146,6 +146,32 @@ def main():
         print("Checkpoint: save checkpoint step %d" % global_steps)
     model.save_networks(global_steps)
 
+'''
+python train.py \
+--experiment_dir=/data/dataset \
+--experiment_id=0 \
+--batch_size=400 \
+--lr=0.001 \
+--epoch=400 \
+--sample_steps=10 \
+--schedule=20 \
+--L1_penalty=100 \
+--Lconst_penalty=15
+'''
 
+'''
+python train.py --experiment_dir=/data/dataset2 \
+                --experiment_id=0 \
+                --batch_size=400 \
+                --lr=0.0005 \  # 더 낮은 학습률
+                --epoch=400 \
+                --sample_steps=10 \
+                --schedule=20 \
+                --L1_penalty=100 \
+                --Lconst_penalty=15 \
+                --fine_tune=<영문폰트레이블> \
+                --resume=1 \
+                --freeze_encoder=1  # 인코더 고정
+'''
 if __name__ == '__main__':
     main()

@@ -65,7 +65,7 @@ def get_special_type():
     inv_font_dict = {k: v for v, k in font_dict.items()}
     return font_set, font_dict, inv_font_dict
 
-
+# python package.py --dir=/Users/doheyonkim/data/fontbox/test --save_dir=/Users/doheyonkim/data/fontbox/test --split_ratio=0.1
 if __name__ == "__main__":
     if not os.path.isdir(args.save_dir):
         os.mkdir(args.save_dir)
