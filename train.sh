@@ -1,6 +1,7 @@
  # 기존 패키지 제거
  conda create --name zi2zi-torch python=3.7
  conda activate zi2zi-torch
+ pip uninstall torch torchvision torchaudio pillow numpy scipy imageio -y
  pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
  pip install pillow==7.1.2 numpy==1.18.1 scipy==1.4.1 imageio==2.8.0
 
@@ -37,16 +38,16 @@ python package-multi.py \
 
 
 
- nohup python train.py \
+nohup python train.py \
   --experiment_dir=/data/dataset \
-  --batch_size=220 \
+  --batch_size=200 \
   --lr=0.001 \
-  --epoch=1000 \
+  --epoch=90000 \
   --sample_steps=100 \
   --schedule=20 \
   --L1_penalty=100 \
   --Lconst_penalty=15 \
-  --embedding_num=704 \
+  --embedding_num=4 \
   --gpu_ids 0 1 &
 
 

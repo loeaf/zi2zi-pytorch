@@ -49,7 +49,9 @@ def chkormakedir(path):
     if not os.path.isdir(path):
         os.mkdir(path)
 
-def main():
+def main():# train.py 시작 부분에 추가
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cuda.enable_graph_capture = False
     args = parser.parse_args()
     data_dir = os.path.join(args.experiment_dir, "data")
     checkpoint_dir = os.path.join(args.experiment_dir, "checkpoint")
